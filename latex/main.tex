@@ -1,0 +1,73 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{diffcoeff}
+
+\begin{document}
+
+We consider a simple two reagent reaction diffusion problem
+
+\begin{align}
+    \diff{Q}{t} &= \gamma f(Q,R) + \nabla^2 Q\\
+    \diff{R}{t} &= \gamma g(Q,R) + D\nabla^2 R
+\end{align}
+
+To practice using Deal.ii, our goal will be to simulate this system. The first
+step is to determine the weak form of the problem, and decide how we will update
+in time. To keep things simple, let's consider a forward Euler scheme in time
+which we will eventually adapt into a full IMEX scheme.
+
+\begin{align}
+    \frac{Q^{n+1}-Q^n}{\Delta t} &= \gamma f(Q^n, R^n) + \nabla^2 Q^n\\
+    \frac{R^{n+1}-R^n}{\Delta t} &= \gamma g(Q^n, R^n) + D\nabla^2 R^n
+\end{align}
+
+We can easily update the diffusion terms implicitly to help with the stability
+of the method. Therefore, we consider the following expression with $n$ shifted
+down by one:
+
+\begin{align}
+    \frac{Q^{n}-Q^{n-1}}{\Delta t} - \nabla^2 Q^{n}  &= \gamma f(Q^{n-1}, R^{n-1})\\
+    \frac{R^{n}-R^{n-1}}{\Delta t} - D\nabla^2 R^{n} &= \gamma g(Q^{n-1}, R^{n-1})
+\end{align}
+
+Now let's project this into the trial space:
+
+\begin{align}
+    (\phi_i^{n}, Q^{n}) - \Delta t (\phi_i^{n}, \nabla^2 Q^n)
+    &= (\phi_i^n, Q^{n-1}) + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
+    (\phi_i^n, R) - D\Delta t\, (\phi_i^n,\nabla^2 R^n)
+    &= (\phi_i^n, R^{n-1}) + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+\end{align}
+
+If $Q$ and $R$ are approximately equal to their projections in the trial space,
+then
+
+\begin{align}
+    (\phi_i^{n}, q_j^n\phi_j^{n}) - \Delta t (\phi_i^{n}, \nabla^2 q_j^n \phi_j^n)
+    &= (\phi_i^n, q_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
+    (\phi_i^n, r_j^n \phi_j^n) - D\Delta t\, (\phi_i^n,\nabla^2 r_j^{n}\phi_j^n)
+    &= (\phi_i^n, r_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+\end{align}
+
+We will assume homogeneous Dirichlet conditions so that after integrating by
+parts the system reduces to
+\begin{align}
+    (\phi_i^{n}, q_j^n\phi_j^{n}) - \Delta t (\nabla \phi_i^{n}, \nabla q_j^n \phi_j^n)
+    &= (\phi_i^n, q_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
+    (\phi_i^n, r_j^n \phi_j^{n}) - D\Delta t\, (\nabla \phi_i^n,\nabla r_j^{n}\phi_j^n)
+    &= (\phi_i^n, r_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+\end{align}
+or
+
+\begin{align}
+    Mq^n - \Delta t Aq^n
+    &= Mq^{n-1} + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
+    Mr^n - D\Delta t Ar^n
+    &= Mr^{n-1} + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+\end{align}
+
+\end{document}
+
