@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
 
 \usepackage{amsmath}
@@ -14,59 +15,53 @@ We consider a simple two reagent reaction diffusion problem
     \diff{R}{t} &= \gamma g(Q,R) + D\nabla^2 R
 \end{align}
 
-To practice using Deal.ii, our goal will be to simulate this system. The first
-step is to determine the weak form of the problem, and decide how we will update
-in time. To keep things simple, let's consider a forward Euler scheme in time
-which we will eventually adapt into a full IMEX scheme.
-
+To practice what we've been learning, our goal will be to simulate this system
+under progressively more and more complicated circumstances. To begin, we will
+not enforce any boundary conditions and inherit the boundary conditions from
+the finite element method. The first step of any finite element method is to 
+determine the weak form of the problem, and decide how we will update in time.
+To keep things simple, let's consider a forward Euler scheme in time which we 
+will eventually adapt into a full IMEX scheme.
 \begin{align}
     \frac{Q^{n+1}-Q^n}{\Delta t} &= \gamma f(Q^n, R^n) + \nabla^2 Q^n\\
     \frac{R^{n+1}-R^n}{\Delta t} &= \gamma g(Q^n, R^n) + D\nabla^2 R^n
 \end{align}
-
 We can easily update the diffusion terms implicitly to help with the stability
 of the method. Therefore, we consider the following expression with $n$ shifted
 down by one:
-
 \begin{align}
-    \frac{Q^{n}-Q^{n-1}}{\Delta t} - \nabla^2 Q^{n}  &= \gamma f(Q^{n-1}, R^{n-1})\\
-    \frac{R^{n}-R^{n-1}}{\Delta t} - D\nabla^2 R^{n} &= \gamma g(Q^{n-1}, R^{n-1})
+    \frac{Q^{n+1}-Q^{n}}{\Delta t} - \nabla^2 Q^{n+1}  &= \gamma f(Q^{n}, R^{n})\\
+    \frac{R^{n+1}-R^{n}}{\Delta t} - D\nabla^2 R^{n+1} &= \gamma g(Q^{n}, R^{n})
 \end{align}
-
 Now let's project this into the trial space:
-
 \begin{align}
-    (\phi_i^{n}, Q^{n}) - \Delta t (\phi_i^{n}, \nabla^2 Q^n)
-    &= (\phi_i^n, Q^{n-1}) + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
+    (\phi_i^{n+1}, Q^{n+1}) - \Delta t (\phi_i^{n+1}, \nabla^2 Q^n)
+    &= (\phi_i^n, Q^{n}) + \gamma \Delta t (\phi_i^{n},\, f(Q^{n}, R^{n}))\\
     (\phi_i^n, R) - D\Delta t\, (\phi_i^n,\nabla^2 R^n)
-    &= (\phi_i^n, R^{n-1}) + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+    &= (\phi_i^n, R^{n}) + \gamma \Delta t\, (\phi_i^{n}\, g(Q^{n}, R^{n}))
 \end{align}
-
 If $Q$ and $R$ are approximately equal to their projections in the trial space,
 then
-
 \begin{align}
-    (\phi_i^{n}, q_j^n\phi_j^{n}) - \Delta t (\phi_i^{n}, \nabla^2 q_j^n \phi_j^n)
-    &= (\phi_i^n, q_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
-    (\phi_i^n, r_j^n \phi_j^n) - D\Delta t\, (\phi_i^n,\nabla^2 r_j^{n}\phi_j^n)
-    &= (\phi_i^n, r_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+    (\phi_i^{n+1}, q_j^{n+1}\phi_j^{n+1}) - \Delta t (\phi_i^{n+1}, \nabla^2 q_j^{n+1} \phi_j^{n+1})
+    &= (\phi_i^{n}, q_j^{n}\phi_j^{n}) + \gamma \Delta t (\phi_i^{n},\, f(Q^{n}, R^{n}))\\
+    (\phi_i^{n+1}, r_j^{n+1} \phi_j^{n+1}) - D\Delta t\, (\phi_i^{n+1},\nabla^2 r_j^{n+1}\phi_j^{n+1})
+    &= (\phi_i^n, r_j^{n}\phi_j^{n}) + \gamma \Delta t\, (\phi_i^{n},\, g(Q^{n}, R^{n}))
 \end{align}
-
 We will assume homogeneous Dirichlet conditions so that after integrating by
 parts the system reduces to
 \begin{align}
-    (\phi_i^{n}, q_j^n\phi_j^{n}) - \Delta t (\nabla \phi_i^{n}, \nabla q_j^n \phi_j^n)
-    &= (\phi_i^n, q_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
-    (\phi_i^n, r_j^n \phi_j^{n}) - D\Delta t\, (\nabla \phi_i^n,\nabla r_j^{n}\phi_j^n)
-    &= (\phi_i^n, r_j^{n-1}\phi_j^{n-1}) + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+    (\phi_i^{n+1}, q_j^{n+1}\phi_j^{n+1}) + \Delta t (\nabla \phi_i^{n+1}, \nabla q_j^{n+1} \phi_j^{n+1})
+    &= (\phi_i^{n}, q_j^{n}\phi_j^{n}) + \gamma \Delta t (\phi_i^{n},\, f(Q^{n}, R^{n}))\\
+    (\phi_i^{n+1}, r_j^{n+1} \phi_j^{n+1}) + D\Delta t\, (\nabla \phi_i^{n+1},\nabla r_j^{n+1}\phi_j^{n+1})
+    &= (\phi_i^n, r_j^{n}\phi_j^{n}) + \gamma \Delta t\, (\phi_i^{n},\, g(Q^{n}, R^{n}))
 \end{align}
 or
-
 \begin{align}
     Mq^n - \Delta t Aq^n
-    &= Mq^{n-1} + \gamma \Delta t f(Q^{n-1}, R^{n-1})\\
+    &= Mq^{n-1} + \gamma \Delta t f(Q^{n}, R^{n})\\
     Mr^n - D\Delta t Ar^n
-    &= Mr^{n-1} + \gamma \Delta t\, g(Q^{n-1}, R^{n-1})
+    &= Mr^{n-1} + \gamma \Delta t\, g(Q^{n}, R^{n})
 \end{align}
 
 \end{document}

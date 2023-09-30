@@ -1,5 +1,5 @@
 # Fdb version 3
-["lualatex"] 1695927925 "main.tex" "main.pdf" "main" 1695927926
+["lualatex"] 1696098790 "main.tex" "main.pdf" "main" 1696098790
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1246382020 916 f87d7c45f9c908e672703b83b72241a3 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam5.tfm" 1246382020 924 9904cf1d39e9767e7a3622f2a125a565 ""
@@ -24,6 +24,8 @@
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb" 1248133631 32569 5e5ddc8df908dea60932f3c484a54c0d ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb" 1248133631 32716 08e384dc442464e7285e891af9f45947 ""
   "/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii" 1461363279 71627 94eb9990bed73c364d7f53f960cc8c5b ""
+  "/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty" 1583617216 6501 4011d89d9621e0b0901138815ba5ff29 ""
+  "/usr/share/texlive/texmf-dist/tex/generic/iftex/ifvtex.sty" 1572645307 1057 525c2192b5febbd8c1f662c9468335bb ""
   "/usr/share/texlive/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.lua" 1593380077 9447 5e9f52f1871707a5d27dea360afbe4cb ""
   "/usr/share/texlive/texmf-dist/tex/latex/amsfonts/amsfonts.sty" 1359763108 5949 3f3fd50a8cc94c3d4cbf4fc66cd3df1c ""
   "/usr/share/texlive/texmf-dist/tex/latex/amsfonts/amssymb.sty" 1359763108 13829 94730e64147574077f8ecfea9bb69af4 ""
@@ -40,6 +42,7 @@
   "/usr/share/texlive/texmf-dist/tex/latex/base/ts1cmr.fd" 1622581934 2430 06a89bcded389391906798ea7a3f3aaa ""
   "/usr/share/texlive/texmf-dist/tex/latex/diffcoeff/diffcoeff.sty" 1640731787 26164 e58612a27b513fd7e9f953b3d9a2039c ""
   "/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty" 1579991033 13886 d1306dcf79a944f6988e688c1785f9ce ""
+  "/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty" 1578002852 41601 9cf6c5257b1bc7af01a58859749dd37a ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg" 1465944070 1224 978390e9c2234eab29404bc21b268d1e ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics-def/luatex.def" 1622667507 19010 055822b35577472bb450b4662bbf28d9 ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty" 1622581934 18399 7e40f80366dffb22c0e7b70517db5cb4 ""
@@ -59,8 +62,8 @@
   "/usr/share/texmf/tex/latex/lm/ot1lmr.fd" 1256929440 1880 bae7b659316f7344a86218ad38b01d91 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1695922680 165012 f177baa1c39a3ebd62c3096a43521a0d ""
   "/var/lib/texmf/web2c/luahbtex/lualatex.fmt" 1695922684 4555352 229f10491cea725c357947b711b01733 ""
-  "main.aux" 1695927926 32 044b7f8fc9779af7531264e0c5c84b6d "lualatex"
-  "main.tex" 1695927923 2590 b17f43016f17fffb6db99ed5b2b2f42b ""
+  "main.aux" 1696098790 32 3985256e7290058c681f74d7a3565a19 "lualatex"
+  "main.tex" 1696098779 2966 340e882c02024b1acb3930d4c38254df ""
   (generated)
   "main.aux"
   "main.log"
