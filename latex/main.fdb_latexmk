@@ -1,5 +1,5 @@
 # Fdb version 3
-["lualatex"] 1696098790 "main.tex" "main.pdf" "main" 1696098790
+["lualatex"] 1696098894 "main.tex" "main.pdf" "main" 1696098894
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1246382020 916 f87d7c45f9c908e672703b83b72241a3 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam5.tfm" 1246382020 924 9904cf1d39e9767e7a3622f2a125a565 ""
@@ -62,8 +62,8 @@
   "/usr/share/texmf/tex/latex/lm/ot1lmr.fd" 1256929440 1880 bae7b659316f7344a86218ad38b01d91 ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1695922680 165012 f177baa1c39a3ebd62c3096a43521a0d ""
   "/var/lib/texmf/web2c/luahbtex/lualatex.fmt" 1695922684 4555352 229f10491cea725c357947b711b01733 ""
-  "main.aux" 1696098790 32 3985256e7290058c681f74d7a3565a19 "lualatex"
-  "main.tex" 1696098779 2966 340e882c02024b1acb3930d4c38254df ""
+  "main.aux" 1696098894 32 3985256e7290058c681f74d7a3565a19 "lualatex"
+  "main.tex" 1696098888 2984 22bd9d7daf3dc7b37ac43e43d8d54a88 ""
   (generated)
   "main.aux"
   "main.log"
