@@ -35,7 +35,7 @@ down by one:
 \end{align}
 Now let's project this into the trial space:
 \begin{align}
-    (\phi_i^{n+1}, Q^{n+1}) - \Delta t (\phi_i^{n+1}, \nabla^2 Q^n)
+    (\phi_i^{n+1}, Q^{n+1}) - \Delta t (\phi_i^{n+1}, \nabla^2 Q^{n+1})
     &= (\phi_i^n, Q^{n}) + \gamma \Delta t (\phi_i^{n},\, f(Q^{n}, R^{n}))\\
     (\phi_i^{n+1}, R^{n+1}) - D\Delta t\, (\phi_i^{n+1},\nabla^2 R^{n+1})
     &= (\phi_i^n, R^{n}) + \gamma \Delta t\, (\phi_i^{n}\, g(Q^{n}, R^{n}))
@@ -58,10 +58,17 @@ parts the system reduces to
 \end{align}
 or
 \begin{align}
-    Mq^n - \Delta t Aq^n
-    &= Mq^{n-1} + \gamma \Delta t f(Q^{n}, R^{n})\\
-    Mr^n - D\Delta t Ar^n
-    &= Mr^{n-1} + \gamma \Delta t\, g(Q^{n}, R^{n})
+    Mq^n + \Delta t Aq^n
+    &= Mq^{n} + \gamma \Delta t f(Q^{n}, R^{n})\\
+    Mr^n + D\Delta t Ar^n
+    &= Mr^{n} + \gamma \Delta t\, g(Q^{n}, R^{n})
+\end{align}
+which becomes
+\begin{align}
+    (M + \Delta t A)q^n
+    &= Mq^{n} + \gamma \Delta t f(Q^{n}, R^{n})\\
+    (M + D\Delta t) Ar^n
+    &= Mr^{n} + \gamma \Delta t\, g(Q^{n}, R^{n})
 \end{align}
 
 \end{document}
