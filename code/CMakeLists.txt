@@ -7,7 +7,7 @@ deal_ii_initialize_cached_variables()
 
 project(waveEquation)
 
-add_executable(main main.cc include/waveMath.h)
+add_executable(main main.cc include/reactMath)
 deal_ii_setup_target(main)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/build)
