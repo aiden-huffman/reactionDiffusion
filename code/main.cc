@@ -153,9 +153,9 @@ namespace reactionDiffusion
 
         GridGenerator::hyper_cube(
             this->triangulation,
-            -1, 1
+            0, 1
         );
-        triangulation.refine_global(4);
+        triangulation.refine_global(7);
 
         std::cout   << "Mesh generated...\n"
                     << "Active Cells: " << triangulation.n_active_cells()
@@ -260,7 +260,7 @@ namespace reactionDiffusion
     {
         SolverControl               solverControl(
                                         1000,
-                                        1e-6 * systemRightHandSideQ.l2_norm()
+                                        1e-8 * systemRightHandSideQ.l2_norm()
                                     );
         SolverCG<Vector<double>>    cg(solverControl);
 
@@ -271,7 +271,7 @@ namespace reactionDiffusion
             PreconditionIdentity()
         );
 
-        std::cout   << "  Q solved: "
+        std::cout   << "    Q solved: "
                     << solverControl.last_step()
                     << " CG iterations."
                     << std::endl;
@@ -281,7 +281,7 @@ namespace reactionDiffusion
     {
         SolverControl               solverControl(
                                         1000,
-                                        1e-6 * systemRightHandSideR.l2_norm()
+                                        1e-8 * systemRightHandSideR.l2_norm()
                                     );
         SolverCG<Vector<double>>    cg(solverControl);
 
@@ -292,7 +292,7 @@ namespace reactionDiffusion
             PreconditionIdentity()
         );
 
-        std::cout   << "  R solved: "
+        std::cout   << "    R solved: "
                     << solverControl.last_step()
                     << " CG iterations."
                     << std::endl;
@@ -333,10 +333,10 @@ namespace reactionDiffusion
             std::cout   << "    building left hand side..."
                         << std::endl;
             matrixQ.copy_from(massMatrix);
-            matrixQ.add(-1.*this->timeStep, laplaceMatrix);
+            matrixQ.add(this->timeStep, laplaceMatrix);
 
             matrixR.copy_from(massMatrix);
-            matrixR.add(-1.*this->timeStep, laplaceMatrix);
+            matrixR.add(this->D * this->timeStep, laplaceMatrix);
 
             std::cout   << "    building right hand side..."
                         << std::endl;
@@ -359,21 +359,41 @@ namespace reactionDiffusion
                 cell->get_dof_indices(local_dof_indices);
                 for(const unsigned int qIndex : feValues.quadrature_point_indices())
                 {
+                    
+                    double Qx = solutionValuesQ[qIndex];
+                    double Rx = solutionValuesR[qIndex];
+
+                    std::cout   << "\r    Current values:"
+                                << "    Q: " << Qx
+                                << "    R: " << Rx; 
+
+                    if (!(Qx >= 0))
+                    {
+                        std::cout   << std::endl;
+                        std::cerr   << "Concentration of Q is not non-negative"
+                                    << std::endl;
+
+                        assert(Qx >= 0);
+                    } 
+                    else if (!(Rx >= 0))
+                    {
+                        std::cout   << std::endl;
+                        std::cerr   << "Concentration of R is not non-negative"
+                                    << std::endl;
+
+                        assert(Rx >= 0);
+                    }
+
+
                     for(const unsigned int i : feValues.dof_indices())
                     {
-                        std::cout   << "\r    Current values:"
-                                    << "    Q: " << solutionValuesQ[qIndex]
-                                    << "    R: " << solutionValuesR[qIndex];
+                        
                         systemRightHandSideQ(local_dof_indices[i]) += feValues.shape_value(i, qIndex) * 
-                                (   this->a - solutionValuesQ[qIndex] 
-                                    + pow(solutionValuesQ[qIndex],2)
-                                    * solutionValuesR[qIndex]
+                                (   this->a - Qx + pow(Qx,2) * Rx
                                 ) * feValues.JxW(qIndex) * this->timeStep;
                         systemRightHandSideR(local_dof_indices[i]) += feValues.shape_value(i, qIndex) *
-                                (   this->b - pow(solutionValuesQ[qIndex],2)
-                                    * solutionValuesR[qIndex]
+                                (   this->b - pow(Qx,2) * Rx
                                 ) * feValues.JxW(qIndex) * this->timeStep;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
                     }
                     
@@ -384,7 +404,6 @@ namespace reactionDiffusion
 
             solveQ();
             solveR();
-
 
             oldSolutionQ = solutionQ;
             oldSolutionR = solutionR;
