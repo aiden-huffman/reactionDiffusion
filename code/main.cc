@@ -95,29 +95,6 @@ namespace reactionDiffusion
 
     };
 
-/*    template<int dim>
-    class InitialValuesQ : public Function<dim>
-    {
-        public:
-            InitialValuesQ(const double a,
-                           const double b);
-            virtual double value(const Point<dim> p,
-                                 const unsigned int component = 0) const override
-            {
-                (void) component;
-                return this->a + this->b;
-            }
-        private:
-            const double a;
-            const double b;
-    };
-
-    template<int dim> InitialValuesQ<dim> :: InitialValuesQ(const double a,
-                                                            const double b)
-    : a(a)
-    , b(b)
-    {}*/
-
     // Constructor
     template<int dim> ReactionDiffusionEquation<dim>::ReactionDiffusionEquation()
         : fe(1)
