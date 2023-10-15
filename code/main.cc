@@ -1,5 +1,14 @@
 #include <chrono>
 #include <cstdio>
+#include <exception>
+#include <iostream>
+#include <fstream>
+#include<random>
+#include<algorithm>
+
+#include <math.h>
+
+// Deal.II Libraries
 #include <deal.II/base/data_out_base.h>
 #include <deal.II/base/types.h>
 #include <deal.II/fe/fe_update_flags.h>
@@ -8,13 +17,6 @@
 #include <deal.II/numerics/vector_tools_boundary.h>
 #include <deal.II/numerics/vector_tools_project.h>
 #include <deal.II/numerics/vector_tools_rhs.h>
-#include <exception>
-#include <iostream>
-#include <fstream>
-
-#include "include/reactMath.hpp"
-
-// Deal.II Libraries
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
@@ -103,6 +105,74 @@ namespace reactionDiffusion
         , time(timeStep)
         , timestepNumber(1)
     {}
+
+    template<int dim> class InitialConditionsQ : public Function<dim>
+    {
+        public:
+            InitialConditionsQ(double a, double b);
+            virtual double value(const Point<dim> & p,
+                                 const unsigned int component = 0) const override;
+        private:
+            double a;
+            double b;
+
+            double steady;
+            
+            mutable std::default_random_engine          generator;
+            mutable std::normal_distribution<double>    distribution;
+    };
+
+    // Initial Values Constructor
+    template<int dim> InitialConditionsQ<dim>::InitialConditionsQ(double a,
+                                                                  double b)
+        : a(a)
+        , b(b)
+        , steady(a+b)
+        , generator()
+        , distribution(steady, 0.001)
+    {}
+
+    // Value function declaration
+    template<int dim> double InitialConditionsQ<dim> 
+        :: value (const Point<dim> &p,
+                  const unsigned int i /*component*/) const
+    {
+        return this->a + this->b + this->distribution(this->generator);
+    }
+
+    template<int dim> class InitialConditionsR : public Function<dim>
+    {
+        public:
+            InitialConditionsR(double a, double b);
+            virtual double value(const Point<dim> & p,
+                                 const unsigned int component = 0) const override;
+        private:
+            double a;
+            double b;
+            
+            double steady;
+            
+            mutable std::default_random_engine          generator;
+            mutable std::normal_distribution<double>    distribution;
+    };
+    // Initial Values Constructor
+    template<int dim> InitialConditionsR<dim>::InitialConditionsR(double a,
+                                                                  double b)
+        : a(a)
+        , b(b)
+        , steady(b / pow(a + b,2))
+        , generator()
+        , distribution(steady, 0.001)
+    {}
+
+    // Value function declaration
+    template<int dim> double InitialConditionsR<dim> 
+        :: value (const Point<dim> &p,
+                  const unsigned int i /*component*/) const
+    {
+        return (this-> b / pow(this-> a + this->b, 2) 
+                + this->distribution(this->generator));
+    }
 
     // Setup system
     template<int dim> void ReactionDiffusionEquation<dim> :: setup_system(
@@ -203,7 +273,7 @@ namespace reactionDiffusion
             this->dofHandler,
             this->constraints,
             QGauss<dim>(fe.degree + 1),
-            Functions::ConstantFunction<dim>(1.),
+            InitialConditionsQ<dim>(this->a, this->b),
             this->oldSolutionQ
         );
 
@@ -211,7 +281,7 @@ namespace reactionDiffusion
             this->dofHandler,
             this->constraints,
             QGauss<dim>(fe.degree +1),
-            Functions::ConstantFunction<dim>(1.),
+            InitialConditionsR<dim>(this->a, this->b),
             this->oldSolutionR
         );
 
@@ -219,7 +289,7 @@ namespace reactionDiffusion
             this->dofHandler,
             this->constraints,
             QGauss<dim>(fe.degree +1),
-            Functions::ConstantFunction<dim>(1.),
+            InitialConditionsQ<dim>(this->a, this->b),
             this->solutionQ
         );
 
@@ -228,7 +298,7 @@ namespace reactionDiffusion
             this->dofHandler,
             this->constraints,
             QGauss<dim>(fe.degree +1),
-            Functions::ConstantFunction<dim>(1.),
+            InitialConditionsR<dim>(this->a, this->b),
             this->solutionR
         );
     }
@@ -334,6 +404,7 @@ namespace reactionDiffusion
                 feValues.get_function_values(oldSolutionR,
                                              solutionValuesR);
                 cell->get_dof_indices(local_dof_indices);
+
                 for(const unsigned int qIndex : feValues.quadrature_point_indices())
                 {
                     
