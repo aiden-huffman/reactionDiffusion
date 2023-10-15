@@ -129,7 +129,7 @@ namespace reactionDiffusion
         , b(b)
         , steady(a+b)
         , generator()
-        , distribution(steady, 0.001)
+        , distribution(0, 0.01)
     {}
 
     // Value function declaration
@@ -137,7 +137,7 @@ namespace reactionDiffusion
         :: value (const Point<dim> &p,
                   const unsigned int i /*component*/) const
     {
-        return this->a + this->b + this->distribution(this->generator);
+        return this->steady + this->distribution(this->generator);
     }
 
     template<int dim> class InitialConditionsR : public Function<dim>
@@ -162,7 +162,7 @@ namespace reactionDiffusion
         , b(b)
         , steady(b / pow(a + b,2))
         , generator()
-        , distribution(steady, 0.001)
+        , distribution(0, 0.01)
     {}
 
     // Value function declaration
@@ -170,8 +170,7 @@ namespace reactionDiffusion
         :: value (const Point<dim> &p,
                   const unsigned int i /*component*/) const
     {
-        return (this-> b / pow(this-> a + this->b, 2) 
-                + this->distribution(this->generator));
+        return this->steady + this->distribution(this->generator);
     }
 
     // Setup system
