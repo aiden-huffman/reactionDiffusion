@@ -1,12 +1,18 @@
+#include "reactMath.hpp"
 #include <chrono>
+#include <cmath>
 #include <cstdio>
+#include <deal.II/grid/grid_tools.h>
 #include <exception>
 #include <iostream>
 #include <fstream>
 #include<random>
-#include<algorithm>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <math.h>
+#include <reactMath.hpp>
 
 // Deal.II Libraries
 #include <deal.II/base/data_out_base.h>
@@ -41,12 +47,7 @@
 #include <deal.II/numerics/matrix_tools.h>
 
 #include <deal.II/base/utilities.h>
-#include <ostream>
 
-#include <boost/log/trivial.hpp>
-#include <cassert>
-#include <thread>
-#include <vector>
 
 namespace reactionDiffusion
 {
@@ -57,12 +58,12 @@ namespace reactionDiffusion
     {
     public:
         ReactionDiffusionEquation();
-        void run(const Vector<double>   params,
-                 const double           totalSimulationTime);
+        void run(const std::unordered_map<std::string, double>   params,
+                 const double                                    totalSimulationTime);
 
     private:
-        void setup_system(const Vector<double> params,
-                          const double         totalSimulationTime);
+        void setup_system(const std::unordered_map<std::string, double> params,
+                          const double                                  totalSimulationTime);
         void solveQ();
         void solveR();
         void output_results() const;
@@ -129,7 +130,7 @@ namespace reactionDiffusion
         , b(b)
         , steady(a+b)
         , generator()
-        , distribution(0, 0.01)
+        , distribution(0, 0.1)
     {}
 
     // Value function declaration
@@ -162,7 +163,7 @@ namespace reactionDiffusion
         , b(b)
         , steady(b / pow(a + b,2))
         , generator()
-        , distribution(0, 0.01)
+        , distribution(0, 0.1)
     {}
 
     // Value function declaration
@@ -175,16 +176,16 @@ namespace reactionDiffusion
 
     // Setup system
     template<int dim> void ReactionDiffusionEquation<dim> :: setup_system(
-        const Vector<double> params,
+        const std::unordered_map<std::string, double> params,
         const double         totalSimulationTime
     )
     {
         
         std::cout << "Passing parameters" << std::endl;
-        this->a = params[0];
-        this->b = params[1];
-        this->gamma = params[2];
-        this->D = params[3];
+        this->a     = params.at("a");
+        this->b     = params.at("b");
+        this->gamma = params.at("gamma");
+        this->D     = params.at("D");
         
         this->totalSimulationTime = totalSimulationTime;
 
@@ -199,9 +200,27 @@ namespace reactionDiffusion
 
         GridGenerator::hyper_cube(
             this->triangulation,
-            0, 1
+            0, 2*M_PI/params.at("k"),
+            true
         );
-        triangulation.refine_global(7);
+
+        std::vector<GridTools::PeriodicFacePair<
+            typename Triangulation<dim>::cell_iterator>
+        > matchedPairsXX;
+
+        std::vector<GridTools::PeriodicFacePair<
+            typename Triangulation<dim>::cell_iterator>
+        > matchedPairsYY;
+        // Flag adjacent faces in the triangulation due to periodicity
+        GridTools::collect_periodic_faces(this->triangulation,
+                                          0, 1, 0, matchedPairsXX);
+        triangulation.add_periodicity(matchedPairsXX);
+        GridTools::collect_periodic_faces(this->triangulation,
+                                          2, 3, 1, matchedPairsYY);
+        triangulation.add_periodicity(matchedPairsYY);
+        triangulation.refine_global(6);
+
+        
 
         std::cout   << "Mesh generated...\n"
                     << "Active Cells: " << triangulation.n_active_cells()
@@ -263,10 +282,95 @@ namespace reactionDiffusion
         this->systemRightHandSideQ.reinit(dofHandler.n_dofs());
         this->systemRightHandSideR.reinit(dofHandler.n_dofs());
 
-        constraints.close();
-
         std::cout   << "Calculating initial values and storing..."
                     << std::endl;
+
+    }
+
+    template<int dim> void ReactionDiffusionEquation<dim> :: solveQ()
+    {
+        SolverControl               solverControl(
+                                        1000,
+                                        1e-8 * systemRightHandSideQ.l2_norm()
+                                    );
+        SolverCG<Vector<double>>    cg(solverControl);
+
+        cg.solve(
+            this->matrixQ,
+            this->solutionQ,
+            this->systemRightHandSideQ,
+            PreconditionIdentity()
+        );
+
+        this->constraints.distribute(solutionQ);
+
+        std::cout   << "    Q solved: "
+                    << solverControl.last_step()
+                    << " CG iterations."
+                    << std::endl;
+    };
+    
+    template<int dim> void ReactionDiffusionEquation<dim> :: solveR()
+    {
+        SolverControl               solverControl(
+                                        1000,
+                                        1e-8 * systemRightHandSideR.l2_norm()
+                                    );
+        SolverCG<Vector<double>>    cg(solverControl);
+
+        cg.solve(
+            this->matrixR,
+            this->solutionR,
+            this->systemRightHandSideR,
+            PreconditionIdentity()
+        );
+
+        this->constraints.distribute(solutionR);
+
+        std::cout   << "    R solved: "
+                    << solverControl.last_step()
+                    << " CG iterations."
+                    << std::endl;
+    };
+
+    // Run simulation
+    template<int dim> void ReactionDiffusionEquation<dim> :: run (
+        const std::unordered_map<std::string, double>   params,
+        const double                                    totalSimulationTime
+    )
+    {   
+        this->setup_system(params, totalSimulationTime);
+        
+        QGauss<dim>     quadratureFormula(this->fe.degree+1);
+
+        Vector<double>  cellRightHandSideQ(fe.n_dofs_per_cell());
+        Vector<double>  cellRightHandSideR(fe.n_dofs_per_cell());
+
+        std::vector<double>  solutionValuesQ(quadratureFormula.size());
+        std::vector<double>  solutionValuesR(quadratureFormula.size());
+
+        FEValues<dim>   feValues(this->fe,
+                                 quadratureFormula,
+                                 update_values | update_JxW_values);
+
+        std::vector<types::global_dof_index> local_dof_indices(fe.n_dofs_per_cell());
+
+        std::vector<GridTools::PeriodicFacePair<typename DoFHandler<dim>::cell_iterator>>
+            periodicity_vectorXX;
+        std::vector<GridTools::PeriodicFacePair<typename DoFHandler<dim>::cell_iterator>>
+            periodicity_vectorYY;
+
+        GridTools::collect_periodic_faces(this->dofHandler,
+                                          0,1,0,periodicity_vectorXX);
+        DoFTools::make_periodicity_constraints<dim, dim>(periodicity_vectorXX,
+                                                         this->constraints);
+
+        GridTools::collect_periodic_faces(this->dofHandler,
+                                          0,1,0,periodicity_vectorYY);
+        DoFTools::make_periodicity_constraints<dim, dim>(periodicity_vectorYY,
+                                                         this->constraints);
+
+        constraints.close();
 
         VectorTools::project(
             this->dofHandler,
@@ -300,99 +404,17 @@ namespace reactionDiffusion
             InitialConditionsR<dim>(this->a, this->b),
             this->solutionR
         );
-    }
-
-    template<int dim> void ReactionDiffusionEquation<dim> :: solveQ()
-    {
-        SolverControl               solverControl(
-                                        1000,
-                                        1e-8 * systemRightHandSideQ.l2_norm()
-                                    );
-        SolverCG<Vector<double>>    cg(solverControl);
-
-        cg.solve(
-            this->matrixQ,
-            this->solutionQ,
-            this->systemRightHandSideQ,
-            PreconditionIdentity()
-        );
-
-        std::cout   << "    Q solved: "
-                    << solverControl.last_step()
-                    << " CG iterations."
-                    << std::endl;
-    };
-    
-    template<int dim> void ReactionDiffusionEquation<dim> :: solveR()
-    {
-        SolverControl               solverControl(
-                                        1000,
-                                        1e-8 * systemRightHandSideR.l2_norm()
-                                    );
-        SolverCG<Vector<double>>    cg(solverControl);
-
-        cg.solve(
-            this->matrixR,
-            this->solutionR,
-            this->systemRightHandSideR,
-            PreconditionIdentity()
-        );
-
-        std::cout   << "    R solved: "
-                    << solverControl.last_step()
-                    << " CG iterations."
-                    << std::endl;
-    };
-
-    // Run simulation
-    template<int dim> void ReactionDiffusionEquation<dim> :: run (
-        const Vector<double>    params,
-        const double            totalSimulationTime
-    )
-    {   
-        this->setup_system(params, totalSimulationTime);
-        
-        QGauss<dim>     quadratureFormula(this->fe.degree+1);
-
-        Vector<double>  cellRightHandSideQ(fe.n_dofs_per_cell());
-        Vector<double>  cellRightHandSideR(fe.n_dofs_per_cell());
-
-        std::vector<double>  solutionValuesQ(quadratureFormula.size());
-        std::vector<double>  solutionValuesR(quadratureFormula.size());
-
-        FEValues<dim>   feValues(this->fe,
-                                 quadratureFormula,
-                                 update_values | update_JxW_values);
-
-        std::vector<types::global_dof_index> local_dof_indices(fe.n_dofs_per_cell()); 
-
         for(; this->time < this->totalSimulationTime; ++this->timestepNumber)
         { 
-
-            this->time += this->timeStep;
-            std::cout   << "Time step "
-                        << this->timestepNumber
-                        << " at time = "
-                        << this->time
-                        << std::endl;
-            
-            std::cout   << "    building left hand side..."
-                        << std::endl;
+        
             matrixQ.copy_from(massMatrix);
             matrixQ.add(this->timeStep, laplaceMatrix);
 
             matrixR.copy_from(massMatrix);
             matrixR.add(this->D * this->timeStep, laplaceMatrix);
 
-            std::cout   << "    building right hand side..."
-                        << std::endl;
-
-            std::cout   << "    Calculating Mv^{n-1}" << std::endl;
             massMatrix.vmult(systemRightHandSideQ, this->oldSolutionQ);
             massMatrix.vmult(systemRightHandSideR, this->oldSolutionR);
-
-            std::cout   << "    Adding reaction component for right hand side"
-                        << std::endl;
 
             for(const auto &cell : dofHandler.active_cell_iterators())
             {
@@ -409,10 +431,6 @@ namespace reactionDiffusion
                     
                     double Qx = solutionValuesQ[qIndex];
                     double Rx = solutionValuesR[qIndex];
-
-                    std::cout   << "\r    Current values:"
-                                << "    Q: " << Qx
-                                << "    R: " << Rx; 
 
                     if (!(Qx >= 0))
                     {
@@ -447,10 +465,32 @@ namespace reactionDiffusion
                 }
             }
 
-            std::cout << std::endl;
+            this->time += this->timeStep;
+            std::cout   << "Time step "
+                        << this->timestepNumber
+                        << " at time = "
+                        << this->time
+                        << std::endl;
 
             solveQ();
             solveR();
+
+            double maxQ = *std::max_element(this->solutionQ.begin(),
+                                            this->solutionQ.end());
+            double minQ = *std::min_element(this->solutionQ.begin(),
+                                            this->solutionQ.end());
+
+        
+            double maxR = *std::max_element(this->solutionR.begin(),
+                                            this->solutionR.end());
+            double minR = *std::min_element(this->solutionR.begin(),
+                                            this->solutionR.end());
+
+            std::cout   << "    Q Range: (" << maxQ << ", " <<  minQ << ")" 
+                        << std::endl
+                        << "    R Range: (" << maxR << ", " <<  minR << ")"
+                        << std::endl << std::endl;
+
 
             oldSolutionQ = solutionQ;
             oldSolutionR = solutionR;
@@ -463,10 +503,20 @@ int main(){
     std::cout   << "Running" << std::endl
                 << std::endl;
 
-    reactionDiffusion::ReactionDiffusionEquation<2> reactionDiffusion;
+    std::unordered_map<std::string, double>     params;
 
-    dealii::Vector<double>  params({1.0, 1.0, 1.0, 1.0});
-    double                  totalSimulationTime = 10;
+    params["a"]     = 0.2;
+    params["b"]     = 2.0;
+    params["gamma"] = 2.0;
+    params["D"]     = calcCritDiff(params.at("a"), params.at("b")) + 25.;
+
+    params["k"] =  calcCritWavenumber(params.at("a"),
+                                      params.at("b"),
+                                      params.at("gamma"));
+
+    double totalSimulationTime = 10;
+
+    reactionDiffusion::ReactionDiffusionEquation<2> reactionDiffusion;
 
     reactionDiffusion.run(params, totalSimulationTime);
 
