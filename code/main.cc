@@ -1,12 +1,16 @@
+#include "reactMath.hpp"
 #include <chrono>
 #include <cstdio>
 #include <exception>
 #include <iostream>
 #include <fstream>
 #include<random>
-#include<algorithm>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <math.h>
+#include <reactMath.hpp>
 
 // Deal.II Libraries
 #include <deal.II/base/data_out_base.h>
@@ -41,12 +45,7 @@
 #include <deal.II/numerics/matrix_tools.h>
 
 #include <deal.II/base/utilities.h>
-#include <ostream>
 
-#include <boost/log/trivial.hpp>
-#include <cassert>
-#include <thread>
-#include <vector>
 
 namespace reactionDiffusion
 {
@@ -57,12 +56,12 @@ namespace reactionDiffusion
     {
     public:
         ReactionDiffusionEquation();
-        void run(const Vector<double>   params,
-                 const double           totalSimulationTime);
+        void run(const std::unordered_map<std::string, double>   params,
+                 const double                                    totalSimulationTime);
 
     private:
-        void setup_system(const Vector<double> params,
-                          const double         totalSimulationTime);
+        void setup_system(const std::unordered_map<std::string, double> params,
+                          const double                                  totalSimulationTime);
         void solveQ();
         void solveR();
         void output_results() const;
@@ -175,16 +174,16 @@ namespace reactionDiffusion
 
     // Setup system
     template<int dim> void ReactionDiffusionEquation<dim> :: setup_system(
-        const Vector<double> params,
+        const std::unordered_map<std::string, double> params,
         const double         totalSimulationTime
     )
     {
         
         std::cout << "Passing parameters" << std::endl;
-        this->a = params[0];
-        this->b = params[1];
-        this->gamma = params[2];
-        this->D = params[3];
+        this->a     = params.at("a");
+        this->b     = params.at("b");
+        this->gamma = params.at("gamma");
+        this->D     = params.at("D");
         
         this->totalSimulationTime = totalSimulationTime;
 
@@ -199,7 +198,7 @@ namespace reactionDiffusion
 
         GridGenerator::hyper_cube(
             this->triangulation,
-            0, 1
+            0, 25
         );
         triangulation.refine_global(7);
 
@@ -346,8 +345,8 @@ namespace reactionDiffusion
 
     // Run simulation
     template<int dim> void ReactionDiffusionEquation<dim> :: run (
-        const Vector<double>    params,
-        const double            totalSimulationTime
+        const std::unordered_map<std::string, double>   params,
+        const double                                    totalSimulationTime
     )
     {   
         this->setup_system(params, totalSimulationTime);
@@ -463,10 +462,22 @@ int main(){
     std::cout   << "Running" << std::endl
                 << std::endl;
 
-    reactionDiffusion::ReactionDiffusionEquation<2> reactionDiffusion;
+    std::unordered_map<std::string, double>     params;
 
-    dealii::Vector<double>  params({1.0, 1.0, 1.0, 1.0});
-    double                  totalSimulationTime = 10;
+    params["a"]     = 0.2;
+    params["b"]     = 2.0;
+    params["gamma"] = 1.0;
+    params["D"]     = calcCritDiff(params.at("a"), params.at("b")) + 15.;
+
+    std::cout   << "Critical wavenumber: " << calcCritWavenumber(
+                                                params.at("a"),
+                                                params.at("b"),
+                                                params.at("gamma"))
+                << std::endl;
+
+    double totalSimulationTime = 10;
+
+    reactionDiffusion::ReactionDiffusionEquation<2> reactionDiffusion;
 
     reactionDiffusion.run(params, totalSimulationTime);
 
