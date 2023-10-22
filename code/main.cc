@@ -6,12 +6,11 @@
 #include <exception>
 #include <iostream>
 #include <fstream>
-#include<random>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include <math.h>
 #include <reactMath.hpp>
 
 // Deal.II Libraries
@@ -66,7 +65,7 @@ namespace reactionDiffusion
                           const double                                  totalSimulationTime);
         void solveQ();
         void solveR();
-        void output_results() const;
+        void outputResults() const;
 
         Triangulation<dim> triangulation;
         FE_Q<dim>          fe;
@@ -333,6 +332,29 @@ namespace reactionDiffusion
                     << std::endl;
     };
 
+    template<int dim> void ReactionDiffusionEquation<dim> 
+    :: outputResults() const {
+        DataOut<dim> dataOut;
+
+        dataOut.attach_dof_handler(this->dofHandler);
+        dataOut.add_data_vector(this->solutionQ, "Q");
+        dataOut.add_data_vector(this->solutionR, "R");
+
+        dataOut.build_patches();
+
+        const std::string filename = ("data/solution-" 
+                                     + std::to_string(this->timestepNumber) 
+                                     + ".vtu");
+
+        DataOutBase::VtkFlags vtk_flags;
+        vtk_flags.compression_level = DataOutBase::VtkFlags::ZlibCompressionLevel::best_speed;
+        dataOut.set_flags(vtk_flags);
+
+        std::ofstream output(filename);
+        dataOut.write_vtu(output);
+
+    };
+
     // Run simulation
     template<int dim> void ReactionDiffusionEquation<dim> :: run (
         const std::unordered_map<std::string, double>   params,
@@ -490,8 +512,11 @@ namespace reactionDiffusion
                         << std::endl
                         << "    R Range: (" << maxR << ", " <<  minR << ")"
                         << std::endl << std::endl;
-
-
+            
+            if(this->timestepNumber % 10 == 0){
+                outputResults();
+            }
+            
             oldSolutionQ = solutionQ;
             oldSolutionR = solutionR;
         }
