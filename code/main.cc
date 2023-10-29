@@ -129,7 +129,7 @@ namespace reactionDiffusion
         , b(b)
         , steady(a+b)
         , generator()
-        , distribution(0, 0.1)
+        , distribution(steady, 0.1)
     {}
 
     // Value function declaration
@@ -137,7 +137,7 @@ namespace reactionDiffusion
         :: value (const Point<dim> &p,
                   const unsigned int i /*component*/) const
     {
-        return this->steady + this->distribution(this->generator);
+        return this->distribution(this->generator);
     }
 
     template<int dim> class InitialConditionsR : public Function<dim>
@@ -162,7 +162,7 @@ namespace reactionDiffusion
         , b(b)
         , steady(b / pow(a + b,2))
         , generator()
-        , distribution(0, 0.1)
+        , distribution(steady, 0.1)
     {}
 
     // Value function declaration
@@ -170,7 +170,7 @@ namespace reactionDiffusion
         :: value (const Point<dim> &p,
                   const unsigned int i /*component*/) const
     {
-        return this->steady + this->distribution(this->generator);
+        return this->distribution(this->generator);
     }
 
     // Setup system
@@ -180,7 +180,12 @@ namespace reactionDiffusion
     )
     {
         
-        std::cout << "Passing parameters" << std::endl;
+        std::cout << "Passing parameters:" << std::endl;
+        for(auto it=params.begin(); it!=params.end(); it++){
+            std::cout   << "    " << it->first
+                        << ": " << it->second
+                        << std::endl;
+        }
         this->a     = params.at("a");
         this->b     = params.at("b");
         this->gamma = params.at("gamma");
@@ -217,7 +222,7 @@ namespace reactionDiffusion
         GridTools::collect_periodic_faces(this->triangulation,
                                           2, 3, 1, matchedPairsYY);
         triangulation.add_periodicity(matchedPairsYY);
-        triangulation.refine_global(6);
+        triangulation.refine_global(8);
 
         
 
@@ -239,13 +244,35 @@ namespace reactionDiffusion
 
         std::cout   << "\nBuilding sparsity pattern..."
                     << std::endl;
+        std::vector<GridTools::PeriodicFacePair<
+            typename DoFHandler<dim>::cell_iterator>
+        > periodicity_vectorX;
+
+        std::vector<GridTools::PeriodicFacePair<
+            typename DoFHandler<dim>::cell_iterator>
+        > periodicity_vectorY;
+
+        GridTools::collect_periodic_faces(this->dofHandler,
+                                          0,1,0,periodicity_vectorX);
+        GridTools::collect_periodic_faces(this->dofHandler,
+                                          2,3,1,periodicity_vectorY);
+
+        DoFTools::make_periodicity_constraints<dim,dim>(periodicity_vectorX,
+                                                        this->constraints);
+        DoFTools::make_periodicity_constraints<dim,dim>(periodicity_vectorY,
+                                                        this->constraints);
+
+        constraints.close();
 
         DynamicSparsityPattern dsp(
             dofHandler.n_dofs(),
             dofHandler.n_dofs()
         );
-        DoFTools::make_sparsity_pattern(dofHandler, dsp);
+        DoFTools::make_sparsity_pattern(dofHandler,
+                                        dsp,
+                                        this->constraints);
         sparsityPattern.copy_from(dsp);
+        sparsityPattern.compress();
         
         std::cout   << "Reinitializing matrices based on new pattern..."
                     << std::endl;
@@ -293,14 +320,16 @@ namespace reactionDiffusion
                                         1e-8 * systemRightHandSideQ.l2_norm()
                                     );
         SolverCG<Vector<double>>    cg(solverControl);
-
+        
+        this->constraints.condense(
+            this->matrixQ,
+            this->systemRightHandSideQ);
         cg.solve(
             this->matrixQ,
             this->solutionQ,
             this->systemRightHandSideQ,
             PreconditionIdentity()
         );
-
         this->constraints.distribute(solutionQ);
 
         std::cout   << "    Q solved: "
@@ -317,6 +346,9 @@ namespace reactionDiffusion
                                     );
         SolverCG<Vector<double>>    cg(solverControl);
 
+        this->constraints.condense(
+            this->matrixR,
+            this->systemRightHandSideR);
         cg.solve(
             this->matrixR,
             this->solutionR,
@@ -375,25 +407,6 @@ namespace reactionDiffusion
                                  quadratureFormula,
                                  update_values | update_JxW_values);
 
-        std::vector<types::global_dof_index> local_dof_indices(fe.n_dofs_per_cell());
-
-        std::vector<GridTools::PeriodicFacePair<typename DoFHandler<dim>::cell_iterator>>
-            periodicity_vectorXX;
-        std::vector<GridTools::PeriodicFacePair<typename DoFHandler<dim>::cell_iterator>>
-            periodicity_vectorYY;
-
-        GridTools::collect_periodic_faces(this->dofHandler,
-                                          0,1,0,periodicity_vectorXX);
-        DoFTools::make_periodicity_constraints<dim, dim>(periodicity_vectorXX,
-                                                         this->constraints);
-
-        GridTools::collect_periodic_faces(this->dofHandler,
-                                          0,1,0,periodicity_vectorYY);
-        DoFTools::make_periodicity_constraints<dim, dim>(periodicity_vectorYY,
-                                                         this->constraints);
-
-        constraints.close();
-
         VectorTools::project(
             this->dofHandler,
             this->constraints,
@@ -418,7 +431,6 @@ namespace reactionDiffusion
             this->solutionQ
         );
 
-
         VectorTools::project(
             this->dofHandler,
             this->constraints,
@@ -426,6 +438,10 @@ namespace reactionDiffusion
             InitialConditionsR<dim>(this->a, this->b),
             this->solutionR
         );
+        
+        std::vector<types::global_dof_index> 
+            local_dof_indices(fe.n_dofs_per_cell());
+
         for(; this->time < this->totalSimulationTime; ++this->timestepNumber)
         { 
         
@@ -476,10 +492,10 @@ namespace reactionDiffusion
                     {
                         
                         systemRightHandSideQ(local_dof_indices[i]) += feValues.shape_value(i, qIndex) * 
-                                (   this->a - Qx + pow(Qx,2) * Rx
+                                (   this->gamma * (this->a - Qx + pow(Qx,2) * Rx)
                                 ) * feValues.JxW(qIndex) * this->timeStep;
                         systemRightHandSideR(local_dof_indices[i]) += feValues.shape_value(i, qIndex) *
-                                (   this->b - pow(Qx,2) * Rx
+                                (   this->gamma * (this->b - pow(Qx,2) * Rx)
                                 ) * feValues.JxW(qIndex) * this->timeStep;
 
                     }
@@ -508,9 +524,9 @@ namespace reactionDiffusion
             double minR = *std::min_element(this->solutionR.begin(),
                                             this->solutionR.end());
 
-            std::cout   << "    Q Range: (" << maxQ << ", " <<  minQ << ")" 
+            std::cout   << "    Q Range: (" << minQ << ", " <<  maxQ << ")" 
                         << std::endl
-                        << "    R Range: (" << maxR << ", " <<  minR << ")"
+                        << "    R Range: (" << minR << ", " <<  maxR << ")"
                         << std::endl << std::endl;
             
             if(this->timestepNumber % 10 == 0){
@@ -533,13 +549,13 @@ int main(){
     params["a"]     = 0.2;
     params["b"]     = 2.0;
     params["gamma"] = 2.0;
-    params["D"]     = calcCritDiff(params.at("a"), params.at("b")) + 25.;
+    params["D"]     = calcCritDiff(params.at("a"), params.at("b")) + 10.;
 
     params["k"] =  calcCritWavenumber(params.at("a"),
                                       params.at("b"),
                                       params.at("gamma"));
 
-    double totalSimulationTime = 10;
+    double totalSimulationTime = 100;
 
     reactionDiffusion::ReactionDiffusionEquation<2> reactionDiffusion;
 
